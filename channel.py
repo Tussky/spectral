@@ -14,26 +14,15 @@ class channel:
 
 
     def __init__(self, energies: pd.Series):
-<<<<<<< HEAD
        assert len(energies.shape) == 1, "energy needs to be a one dimensional pd.Series"
        self.energy = energies[(0 < energies) & (energies < np.percentile(energies, 99.5))]
        self.counts, self.edges = np.histogram(self.energy, 10_000) 
        self.midpoints = 0.5 * (self.edges[1:] + self.edges[:-1])
        
-=======
-       assert len(energies.shape) == 1, "energies needs to be a one dimensional pd.Series"
-       assert "energy" in energies.keys(), "energies series must have a key called 'energy'"
-       self.energy = energies['energy'][(0 < energies['energy']) & (energies['energy'] < np.percentile(energies['energy'], 99))] 
-       self.counts, self.edges = np.histogram(self.energy, 10_000) 
-       self.midpoints = 0.5 * (self.edges[1:] + self.edges[:-1])
->>>>>>> 6dd8a2cae6c37a5c6ecae53e3f1a3985e46de0a2
 
-    ####################
-    ### PEAK FINDING ###
-    ####################
     def scipy_peaks(self, inplace: bool = False, scipy_prominence = 4, how_many_peaks = 10):
         """
-        Finds channel's peaks using scipy.find_peaks()
+        finds channel's peaks using scipy.find_peaks()
         Params:
             inplace (bool): if True, will save peak_indices and prominences to the channel object
 
@@ -41,7 +30,7 @@ class channel:
             None or pd.Series
         """
         if inplace:
-            assert self.prominent_peak_indices == None, "self.prominent_peak_indices is already defined, cannot overwrite - try inplace = False"
+            assert self.prominent_peak_indices == None, "self.prominent_peak_indices is already defined, cannot overwrite - true inplace = False"
         
         peak_indices, peak_data = find_peaks(self.counts, prominence=scipy_prominence)
         prominences = peak_data['prominences']
@@ -52,6 +41,10 @@ class channel:
             self.prominent_peak_indices
             return None 
         return prominent_peak_indices
+
+    def deriv_peaks(self):
+        d2 = savgol_filter(self.energy, 10, 3)
+        prominent_peak_indices = peak_indices[prominences.argsort()[-8:]]
 
 
     def spline_baseline_subtract(self):
@@ -86,6 +79,7 @@ class channel:
         counts = self.counts.copy()
         baseline = savgol_filter(counts, 200, 3)
         flat_counts = counts - baseline
+        flat_counts = np.maximum(flat_counts, 0)
         flat_counts = pd.Series(flat_counts)
         self.flat_counts = flat_counts
         return flat_counts
