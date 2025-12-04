@@ -3,7 +3,7 @@ import numpy as np
 import plotly.express as px 
 import plotly.graph_objects as go 
 
-def plot_spectra_on_histogram(histogram: pd.Series, midpoints: pd.Series, peak_indices: pd.Series, should_show = True):
+def plot_spectra_on_histogram(histogram: pd.Series, midpoints: pd.Series, peak_indices: pd.Series = None, should_show = True):
     counts_hist = px.line(
         x = midpoints,
         y = histogram,
