@@ -1,21 +1,24 @@
 import pandas as pd
 import numpy as np 
 from scipy.signal import find_peaks
+from scipy.interpolate import  make_interp_spline
+from scipy.signal import savgol_filter
 
 class channel:
     energy: pd.Series
     edges: pd.Series
     midpoints: pd.Series
     counts: pd.Series
-    prominent_peak_indices: pd.Series    
+    prominent_peak_indices: pd.Series  
+    flat_counts: pd.Series
 
 
     def __init__(self, energies: pd.Series):
        assert len(energies.shape) == 1, "energy needs to be a one dimensional pd.Series"
-
-       self.energy = energies[(0 < energies) & (energies < np.percentile(energies, 97))] 
-       self.edges, self.counts = np.histogram(self.energy, 10_000) 
-       self.midpoints = 0.5 * (self.edges[1:] + self.edges[:1])
+       self.energy = energies[(0 < energies) & (energies < np.percentile(energies, 99.5))]
+       self.counts, self.edges = np.histogram(self.energy, 10_000) 
+       self.midpoints = 0.5 * (self.edges[1:] + self.edges[:-1])
+       
 
     def scipy_peaks(self, inplace: bool = False, scipy_prominence = 4, how_many_peaks = 10):
         """
@@ -61,7 +64,7 @@ class channel:
         counts = self.counts.copy()
         flat_counts= counts - spline
         flat_counts = pd.Series(flat_counts)
-        
+        self.flat_counts = flat_counts
         return flat_counts
 
     def savgol_baseline_subtract(self):
@@ -73,19 +76,35 @@ class channel:
         baseline = savgol_filter(counts, 200, 3)
         flat_counts = counts - baseline
         flat_counts = pd.Series(flat_counts)
-
+        self.flat_counts = flat_counts
         return flat_counts
 
-    def plot_raw_channel(self):
+    
+    def plot_channel(self, flat: bool = False, with_peaks: bool = False):
         '''Purpose: Plot raw channel
         ---Input: Self
         ---Output: None'''
+        
+        if(flat):
+            df = pd.DataFrame({
+                'Count': self.flat_counts,
+                'Bin' : self.midpoints
+                })
+            ax = df.plot(drawstyle = 'steps-pre', x = 'Bin', y =  'Count', logy = False, color = 'orange')
+            if(with_peaks):
+                peaks = self.peak_indicies
+                ax.scatter(self.edges[peaks], self.flat_counts[peaks], color = 'r', marker = 'o')
+        else:
+            df = pd.DataFrame({
+                'Count': self.counts,
+                'Bin' : self.midpoints
+                })
+            ax = df.plot(drawstyle = 'steps-pre', x = 'Bin', y =  'Count', logy = True, color = 'orange')
+            if(with_peaks):
+                peaks = self.peak_indicies
+                ax.scatter(self.edges[peaks], self.counts[peaks], color = 'r', marker = 'o')
+        
 
-        df = get_channel_df(channel)
-        ax = df.plot(drawstyle = 'steps-pre', x = 'Bin_Left_Edge', y =  'Count', logy = True, color = 'orange', xlim = (0, 20000))
-        bin_edges = df['Bin_Left_Edge']
-        heights = df['Count']
-        peaks, peak_heights = get_channel_peaks(channel) 
-        ax.scatter(bin_edges[peaks], heights[peaks], color = 'r', marker = 'o')
-        plt.title('og data with peaks')
+        
+        
         
