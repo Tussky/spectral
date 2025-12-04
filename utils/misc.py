@@ -21,3 +21,4 @@ def read_in_hdf5_spectra(path = "./../Data/Gamma/210601_NBS295-106/20210601_1526
             going_in = np.array(hdf_file[channel_name]["filt_value"])
             going_in = going_in[(0 < going_in) & (going_in < np.percentile(going_in, 97))]
             channels.loc[channel_name] = [going_in]
+    return channels
