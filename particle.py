@@ -7,6 +7,7 @@ class particle:
 
     # intialising by adding channels
     def __init__(self, channels_to_add: channel):
+        assert type(channels_to_add)==list and type(channels_to_add[0]) == channel, "channels_to_add must be a list of channels"
         self.channels = channels_to_add
 
 
@@ -19,7 +20,7 @@ class particle:
         self.channels = {}
         self.peak_indices = []
         self.summed_channels = pd.Series()
-        
+
         for name, energies in spectral_dataframe.iterrows():
             self.channels[name] = channel(energies)
 
