@@ -11,13 +11,15 @@ class channel:
     counts: pd.Series
     prominent_peak_indices: pd.Series  
     flat_counts: pd.Series
+    WANTED_PROM_PEAKS: int
 
-
-    def __init__(self, energies: pd.Series):
+    def __init__(self, energies: pd.Series, wanted_prom_peaks: int = 8):
        assert len(energies.shape) == 1, "energy needs to be a one dimensional pd.Series"
+       energies = energies['energy'] # to stop the a.any() error appearing, despite this being a 1D Series.
        self.energy = energies[(0 < energies) & (energies < np.percentile(energies, 99.5))]
        self.counts, self.edges = np.histogram(self.energy, 10_000) 
        self.midpoints = 0.5 * (self.edges[1:] + self.edges[:-1])
+       self.WANTED_PROM_PEAKS = wanted_prom_peaks
        
 
     def scipy_peaks(self, inplace: bool = False, scipy_prominence = 4, how_many_peaks = 10):
@@ -35,7 +37,7 @@ class channel:
         peak_indices, peak_data = find_peaks(self.counts, prominence=scipy_prominence)
         prominences = peak_data['prominences']
 
-        prominent_peak_indices = peak_indices[prominences.argsort()[-8:]]
+        prominent_peak_indices = peak_indices[prominences.argsort()[-WANTED_PROM_PEAKS:]]
 
         if inplace:
             self.prominent_peak_indices
@@ -44,7 +46,7 @@ class channel:
 
     def deriv_peaks(self):
         d2 = savgol_filter(self.energy, 10, 3)
-        prominent_peak_indices = peak_indices[prominences.argsort()[-8:]]
+        prominent_peak_indices = peak_indices[prominences.argsort()[-WANTED_PROM_PEAKS:]]
 
 
     def spline_baseline_subtract(self):
