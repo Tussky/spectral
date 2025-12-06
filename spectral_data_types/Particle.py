@@ -1,6 +1,7 @@
 from channel import channel
 import pandas as pd
-class particle: 
+import warnings 
+class Particle: 
     channels: dict
     peak_indices: list[pd.Series] # Will be calculated using channel allignment
     summed_channels: pd.Series # Will be calculated with sum channels
@@ -36,6 +37,12 @@ class particle:
         assert channel_key in self.channels.keys(), "Channel name not found in object's channels"
         return self.channels[channel_key]
     
+    def apply(self, apply_func, inplace=True):
+        """
+        Apply a channel function to every channel within our particle
+        Params: 
+            apply_func (func) : channel function to apply to every channel"""
+        return 
 
     def sum_channels(self):
         '''Purpose to add all channels in particle
