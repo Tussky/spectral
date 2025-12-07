@@ -9,7 +9,8 @@ class Channel:
     edges: pd.Series
     midpoints: pd.Series
     counts: pd.Series
-    prominent_peak_indices: pd.Series  
+    prominent_peak_indices: pd.Series
+    prominent_peak_edges: pd.Series  
     flat_counts: pd.Series
     WANTED_PROM_PEAKS: int
 
@@ -33,12 +34,12 @@ class Channel:
 
     def scipy_peaks(self, inplace: bool = False, scipy_prominence = 4, how_many_peaks = 10):
         """
-        finds channel's peaks using scipy.find_peaks()
+        Finds channel's peaks using scipy.find_peaks() and returns edges as well as peaks
         Params:
             inplace (bool): if True, will save peak_indices and prominences to the channel object
 
         Returns:
-            None or pd.Series
+            None or tuple(pd.Series,pd.Series)
         """
         if inplace:
             assert self.prominent_peak_indices == None, "self.prominent_peak_indices is already defined, cannot overwrite - true inplace = False"
@@ -47,11 +48,17 @@ class Channel:
         prominences = peak_data['prominences']
 
         prominent_peak_indices = peak_indices[prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
+        prominent_peak_left = peak_data['left_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
+        prominent_peak_right = peak_data['right_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
+        print("LEFTIES")
+        print(prominent_peak_left)
+        print("RIGHTIES")
+        print(prominent_peak_right)
 
         if inplace:
             self.prominent_peak_indices
             return None 
-        return prominent_peak_indices
+        return (peak_indices, prominent_peak_indices, peak_data)
 
     def deriv_peaks(self):
         d2 = savgol_filter(self.energy, 10, 3)

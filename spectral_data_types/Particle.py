@@ -76,6 +76,10 @@ class Particle:
             bin_total = sum(ch.energy[i] for ch in self.channels)
             summed.append(bin_total)
         self.summed_channels = pd.Series(summed)
+
+    def allign_peaks(self):
+        
+        return
         
         
     def plot_particle(self):
