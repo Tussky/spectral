@@ -4,7 +4,7 @@ from scipy.signal import find_peaks
 from scipy.interpolate import  make_interp_spline
 from scipy.signal import savgol_filter
 
-class channel:
+class Channel:
     energy: pd.Series
     edges: pd.Series
     midpoints: pd.Series
