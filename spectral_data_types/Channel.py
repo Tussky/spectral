@@ -63,7 +63,7 @@ class Channel:
     def deriv_peaks(self):
         d2 = savgol_filter(self.energy, 10, 3)
         prominent_peak_indices = peak_indices[prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
-
+        #TODO
 
     def spline_baseline_subtract(self):
         '''Purpose: Subtract the baseline of the channel using low-binned spline
