@@ -8,11 +8,14 @@ class Channel:
     energy: pd.Series
     edges: pd.Series
     midpoints: pd.Series
+    norm_midpoints: pd.Series
+    splined_midpoints: pd.Series
     counts: pd.Series
     prominent_peak_indices: pd.Series
     prominent_peak_edges: pd.Series  
     flat_counts: pd.Series
     WANTED_PROM_PEAKS: int
+    
 
 
     def __init__(self, energies: pd.Series, wanted_prom_peaks: int = 8):
@@ -129,8 +132,14 @@ class Channel:
             if(with_peaks):
                 peaks = self.peak_indicies
                 ax.scatter(self.edges[peaks], self.counts[peaks], color = 'r', marker = 'o')
-        
 
         
+        
+    def normalize_midpoints(self):
+        scaler = 20_000 / self.midpoints[-1]
+
+        self.norm_midpoints = self.midpoints * scaler
+
+        return self.norm_midpoints
         
         
