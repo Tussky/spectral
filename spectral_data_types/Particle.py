@@ -80,7 +80,7 @@ class Particle:
         summed = []
         nbins = len(self.channels[0].midpoints)
         for i in range(nbins):
-            bin_total = sum(ch.energy[i] for ch in self.channels)
+            bin_total = sum(ch.counts[i] for ch in self.channels)
             summed.append(bin_total)
         self.summed_heights = pd.Series(summed)
         
@@ -107,7 +107,7 @@ class Particle:
         channel_h2w = []
         for i, channel in enumerate(self.channels):
             x = channel.midpoints
-            signal = channel.energy
+            signal = channel.counts
             peak_h2w_list = []
             for peak_index in self.peak_indices[i]:
                 fit_region_start = peak_index - 50
@@ -127,6 +127,8 @@ class Particle:
             avg_peak_h2w = np.mean(peak_h2w_list)
             channel_h2w.append(avg_peak_h2w)
         self.channel_h2w = channel_h2w
+
+        return channel_h2w
 
 
 
@@ -161,6 +163,7 @@ class Particle:
 
         particle_h2w = np.mean(peak_h2w_list)
         self.h2w = particle_h2w
+        return particle_h2w
         
     def find_h2w_zscore(self):
         '''
@@ -169,7 +172,20 @@ class Particle:
         :param self: calculate how close we are in aligning to any given channel
         '''
 
-        #TODO
+        try:
+            mean = np.mean(self.channel_h2w)
+            std = np.std(self.channel_h2w)
+            particle_z = np.abs(self.h2w - mean) / std
+            return particle_z
+        except AttributeError:
+            self.find_channels_h2w
+            self.find_particle_h2w
+            mean = np.mean(self.channel_h2w)
+            std = np.std(self.channel_h2w)
+            particle_z = np.abs(self.h2w - mean) / std
+            return particle_z
+        
+
 
 
                 
