@@ -224,7 +224,7 @@ class Particle:
         
         for channel in self.channels.keys():
             aligment_peaks = all_aligning_peaks[channel]
-            current_channel_midpoints, chan1_midpoins =  [tuple[0], tuple[1] for tuple in aligment_peaks]
+            current_channel_midpoints, chan1_midpoins =  [(tuple[0], tuple[1]) for tuple in aligment_peaks]
             spl = make_interp_spline(current_channel_midpoints, chan1_midpoins, k = 3)
 
             channel_x = self.channels[channel]
@@ -233,7 +233,7 @@ class Particle:
 
             channel_x.splined_midpoints = channel_x_t
 
-https://chatgpt.com/share/693b4676-955c-8007-8205-65bbedb4590c
+
         
 
 
