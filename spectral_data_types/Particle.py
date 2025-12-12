@@ -232,8 +232,8 @@ class Particle:
             channel_x_t = spl(chan1_midpoins)
 
             channel_x.splined_midpoints = channel_x_t
-            
 
+https://chatgpt.com/share/693b4676-955c-8007-8205-65bbedb4590c
         
 
 
