@@ -5,6 +5,7 @@ import warnings
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.interpolate import  make_interp_spline
+from dtw import dtw 
 
 
 class Particle: 
@@ -67,7 +68,7 @@ class Particle:
                 new_channels[key] = apply_func(channel)
         
         if inplace:
-            self.channels = new_channels
+            # self.channels = new_channels
             return None
         else:
             return new_channels
@@ -90,7 +91,23 @@ class Particle:
     def allign_peaks(self):
         
         return
+    
+    def dtw_allignment(self):
+        """
+        Docstring for dtw_allignment
         
+        :param self: Alligns all the channels from the particle class to channel1 - does so in place.
+        """
+        the_master_channel = self.channels['chan1']
+        print(self.channels)
+        for name, iter_channel in self.channels.items():
+            if name == 'chan1':
+                continue
+            else:    
+                allignment = dtw(the_master_channel.counts, iter_channel.counts)
+                iter_channel.alligned_counts = iter_channel.counts[allignment.index2] 
+        print("Done with: ", name)
+                
         
     def plot_particle(self):
         chan = self.channels[0]
@@ -191,11 +208,11 @@ class Particle:
 
     def algorithmic_aligning(self):
         #normalize all midpoints
-        for channel in self.channels:
-            channel.normalize_midpoints
-        
+        for channel in self.channels.values():
+            channel.normalize_midpoints()
+
         #Get chan1 peak heights, energy
-        aligning_channel = self.channels['chan01']
+        aligning_channel = self.channels['chan1']
         chan1_peak_inds = aligning_channel.prominent_peak_indices
         chan1_peak_heights = aligning_channel.counts[chan1_peak_inds]
         chan1_peak_energies = aligning_channel.norm_midpoints[chan1_peak_inds]
@@ -207,29 +224,39 @@ class Particle:
 
 
         all_aligning_peaks = {}
-        for channel in self.channels:
-
+        for channel_name, channel in self.channels.items():
             chan_min_scores = []
             for peak_ind in channel.prominent_peak_indices:
                 peak_height = channel.counts[peak_ind]
                 peak_energy = channel.norm_midpoints[peak_ind]
-                min_chan1_i, min_score = min((i, (chan1_peak_heights[i] - peak_height)**2 + (chan1_peak_energies[i] - peak_energy)**2) for i in range(len(chan1_peak_inds)))
+                min_chan1_i, min_score = min([(i, (chan1_peak_heights[i] - peak_height)**2 + (chan1_peak_energies[i] - peak_energy)**2) for i in range(len(chan1_peak_inds))])
                 chan1_energy = chan1_peak_energies[min_chan1_i]
                 #TODO figure out math so can do 1 - h/h, difference should be normalized ont sheer number.
-                chan_min_scores.append(zip(peak_energy, chan1_energy, min_score))
+                chan_min_scores.append((peak_energy, chan1_energy, min_score))
 
-
+            
             chan_aligning_peaks = [(peak_energy, chan1_energy) for peak_energy, chan1_energy, min_score in sorted(chan_min_scores, key=lambda x: x[2])[:5]]
-            all_aligning_peaks[channel] = chan_aligning_peaks
-        
+            all_aligning_peaks[channel_name] = chan_aligning_peaks
+
+        # print(self.channels.keys())
         for channel in self.channels.keys():
             aligment_peaks = all_aligning_peaks[channel]
-            current_channel_midpoints, chan1_midpoins =  [(tuple[0], tuple[1]) for tuple in aligment_peaks]
-            spl = make_interp_spline(current_channel_midpoints, chan1_midpoins, k = 3)
 
+            
+            current_channel_midpoints = [t[0] for t in aligment_peaks]
+            chan1_midpoints = [t[1] for t in aligment_peaks]
+            print(type(current_channel_midpoints), current_channel_midpoints)
+            print(type(chan1_midpoints), chan1_midpoints)
+            chan1_midpoints = sorted(chan1_midpoints)
+            current_channel_midpoints = sorted(current_channel_midpoints)
+
+            try:
+                spl = make_interp_spline(current_channel_midpoints, chan1_midpoints, k = 3)
+            except IndexError:
+                print(channel)
             channel_x = self.channels[channel]
             channel_x_midpoints = channel_x.midpoints
-            channel_x_t = spl(chan1_midpoins)
+            channel_x_t = spl(chan1_midpoints)
 
             channel_x.splined_midpoints = channel_x_t
 

@@ -10,6 +10,7 @@ class Channel:
     midpoints: pd.Series
     norm_midpoints: pd.Series
     splined_midpoints: pd.Series
+    alligned_counts: pd.Series
     counts: pd.Series
     prominent_peak_indices: pd.Series
     prominent_peak_edges: pd.Series  
@@ -25,6 +26,7 @@ class Channel:
        self.counts, self.edges = np.histogram(self.energy, 10_000) 
        self.midpoints = 0.5 * (self.edges[1:] + self.edges[:-1])
        self.WANTED_PROM_PEAKS = wanted_prom_peaks
+       self.prominent_peak_indices = pd.Series()
        
     def __str__(self):
         ret_str = "class: Channel"
@@ -35,7 +37,7 @@ class Channel:
         return ret_str
 
 
-    def scipy_peaks(self, inplace: bool = False, scipy_prominence = 4, how_many_peaks = 10):
+    def scipy_peaks(self, inplace: bool = True, scipy_prominence = 4, how_many_peaks = 10):
         """
         Finds channel's peaks using scipy.find_peaks() and returns edges as well as peaks
         Params:
@@ -44,8 +46,6 @@ class Channel:
         Returns:
             None or tuple(pd.Series,pd.Series)
         """
-        if inplace:
-            assert self.prominent_peak_indices == None, "self.prominent_peak_indices is already defined, cannot overwrite - true inplace = False"
         
         peak_indices, peak_data = find_peaks(self.counts, prominence=scipy_prominence)
         prominences = peak_data['prominences']
@@ -53,13 +53,13 @@ class Channel:
         prominent_peak_indices = peak_indices[prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
         prominent_peak_left = peak_data['left_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
         prominent_peak_right = peak_data['right_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
-        print("LEFTIES")
-        print(prominent_peak_left)
-        print("RIGHTIES")
-        print(prominent_peak_right)
+        # print("LEFTIES")
+        # print(prominent_peak_left)
+        # print("RIGHTIES")
+        # print(prominent_peak_right)
 
         if inplace:
-            self.prominent_peak_indices
+            self.prominent_peak_indices = prominent_peak_indices
             return None 
         return (peak_indices, prominent_peak_indices, peak_data)
 
@@ -83,7 +83,7 @@ class Channel:
     
         #---Create Spline to fit low-binned dataframe
         spl = make_interp_spline(bin_edges_low, counts_low, k=3) #create spline object
-        x = np.linspace(0, max(self.energy), len(self.edges))
+        x = np.linspace(0, max(self.energy), len(self.edges) - 1)
         spline = spl(x) #make spline line
         spline = np.maximum(spline, 0)
 
@@ -119,18 +119,19 @@ class Channel:
                 'Count': self.flat_counts,
                 'Bin' : self.midpoints
                 })
-            ax = df.plot(drawstyle = 'steps-pre', x = 'Bin', y =  'Count', logy = False, color = 'orange')
+            ax = df.plot(drawstyle = 'steps-pre', x = 'Bin', y =  'Count', logy = False, color = 'orange', legend= False)
             if(with_peaks):
-                peaks = self.peak_indicies
+                peaks = self.prominent_peak_indices
+                print("hi", peaks)
                 ax.scatter(self.edges[peaks], self.flat_counts[peaks], color = 'r', marker = 'o')
         else:
             df = pd.DataFrame({
                 'Count': self.counts,
                 'Bin' : self.midpoints
                 })
-            ax = df.plot(drawstyle = 'steps-pre', x = 'Bin', y =  'Count', logy = True, color = 'orange')
+            ax = df.plot(drawstyle = 'steps-pre', x = 'Bin', y =  'Count', logy = True, color = 'orange', legend= False)
             if(with_peaks):
-                peaks = self.peak_indicies
+                peaks = self.prominent_peak_indices
                 ax.scatter(self.edges[peaks], self.counts[peaks], color = 'r', marker = 'o')
 
         
