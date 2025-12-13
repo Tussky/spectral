@@ -5,6 +5,7 @@ from scipy.interpolate import  make_interp_spline
 from scipy.signal import savgol_filter
 
 class Channel:
+    name: str
     energy: pd.Series
     edges: pd.Series
     midpoints: pd.Series
@@ -109,27 +110,25 @@ class Channel:
         return flat_counts
 
     
-    def plot_channel(self, flat: bool = False, with_peaks: bool = False):
+    def plot_channel(self, flat: bool = False, with_peaks: bool = False, name: str = None):
         '''Purpose: Plot raw channel
         ---Input: Self
         ---Output: None'''
-        
         if(flat):
             df = pd.DataFrame({
                 'Count': self.flat_counts,
-                'Bin' : self.midpoints
+                'Energy' : self.midpoints
                 })
-            ax = df.plot(drawstyle = 'steps-pre', x = 'Bin', y =  'Count', logy = False, color = 'orange', legend= False)
+            ax = df.plot(drawstyle = 'steps-pre', x = 'Energy', y =  'Count', logy = False, color = 'orange', label = name, legend= True)
             if(with_peaks):
                 peaks = self.prominent_peak_indices
-                print("hi", peaks)
                 ax.scatter(self.edges[peaks], self.flat_counts[peaks], color = 'r', marker = 'o')
         else:
             df = pd.DataFrame({
                 'Count': self.counts,
-                'Bin' : self.midpoints
+                'Energy' : self.midpoints
                 })
-            ax = df.plot(drawstyle = 'steps-pre', x = 'Bin', y =  'Count', logy = True, color = 'orange', legend= False)
+            ax = df.plot(drawstyle = 'steps-pre', x = 'Energy', y =  'Count', logy = True, color = 'orange', label = name, legend= True)
             if(with_peaks):
                 peaks = self.prominent_peak_indices
                 ax.scatter(self.edges[peaks], self.counts[peaks], color = 'r', marker = 'o')

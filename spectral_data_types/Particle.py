@@ -20,6 +20,7 @@ class Particle:
     def __init__(self, channels_to_add: Channel):
         assert type(channels_to_add)==list and type(channels_to_add[0]) == Channel, "channels_to_add must be a list of channels"
         self.channels = channels_to_add
+        self.clean_channels()
 
 
     # initalising by directly adding a dataframe with energies
@@ -34,6 +35,7 @@ class Particle:
 
         for name, energies in spectral_dataframe.iterrows():
             self.channels[name] = Channel(energies)
+        self.clean_channels()
 
     # for smooth and fast iteration over channels in the particle database
     def __iter__(self):
@@ -259,6 +261,38 @@ class Particle:
             channel_x_t = spl(chan1_midpoints)
 
             channel_x.splined_midpoints = channel_x_t
+
+    def clean_channels(self):
+        print('called clean channels')
+        channel_lengths = []
+        channel_max_bin = []
+        for channel_name in self.channels.keys():
+            chan_x = self.channels[channel_name]
+            channel_lengths.append(len(chan_x.energy))
+            channel_max_bin.append(max(chan_x.midpoints))
+        mean_length = np.mean(channel_lengths)
+        std_length = np.std(channel_lengths)
+        mean_bin = np.mean(channel_max_bin)
+        std_bin = np.std(channel_max_bin)
+
+        cutoff_length = mean_length - (2 * std_length)
+        cutoff_bin = mean_bin - (2 * std_bin)
+
+
+        to_remove = []
+        for channel_name in self.channels.keys():
+            chan_x = self.channels[channel_name]
+            if len(chan_x.energy) < cutoff_length:
+                to_remove.append(channel_name)
+            elif max(chan_x.midpoints) < cutoff_bin:
+                to_remove.append(channel_name)
+
+        for channel_name in to_remove:
+            self.channels.pop(channel_name)
+        
+
+
+
 
 
         
