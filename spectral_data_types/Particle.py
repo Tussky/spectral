@@ -82,12 +82,9 @@ class Particle:
         ---Input: Self
         ---Output: np.array summed spectral values'''
         
-        summed = []
-        nbins = len(self.channels[0].midpoints)
-        for i in range(nbins):
-            bin_total = sum(ch.counts[i] for ch in self.channels)
-            summed.append(bin_total)
-        self.summed_heights = pd.Series(summed)
+        summed_counts = []
+        
+        self.summed_heights = pd.Series(summed_counts)
         
 
     def allign_peaks(self):
@@ -112,16 +109,14 @@ class Particle:
                 
         
     def waterfall_plot_particle(self):
-        # scaled_channels
         plt.figure(figsize=(10, 100))
         offset = 0
-
-        for midpoints, counts, channel_name in zip(scaled_channels['bin_left_edge'],scaled_channels['counts'], scaled_channels['channel']):
-            counts = np.array(counts)
-            plt.plot(bins, counts + offset, label = channel_name)
-            offset -= 2000
+        for channel_name, chan in self.channels.items():
+            plt.plot(chan.splined_midpoints, chan.counts + offset, label = channel_name)
+            offset -= 800
         plt.legend()
         plt.show()
+        
 
 
     def gaussian(x, amplitude, mean, stdev):
@@ -226,10 +221,14 @@ class Particle:
         #find the spline points for chan1.
         master_channel = self.channels['chan1']
         master_peaks = master_channel.prominent_peak_indices
-        master_peak_heights = master_channel.flat_counts[master_peaks]
+        other_master_peaks = np.delete(master_peaks, [0,1,-1])
+
+        master_peak_heights = master_channel.flat_counts[other_master_peaks]
         master_tallest_peak = np.argmax(master_peak_heights)
+
         master_alignment_peaks = master_peaks[[0, 1, master_tallest_peak, -1]] #First, second, tallest, and last peak
         master_alignment_midpoints = master_channel.midpoints[master_alignment_peaks]
+        master_channel.splined_midpoints = master_channel.midpoints
 
 
         #loop through all channels
@@ -238,84 +237,25 @@ class Particle:
                 continue
 
             #find the spline points for chan
-            chan.scipy_peaks()
             chan_peaks = chan.prominent_peak_indices
-            # print(chan_peaks)
             other_chan_peaks = np.delete(chan_peaks, [0, 1, -1])
-            # print(chan_peaks)
+
             
-            chan.savgol_baseline_subtract()
+            
             chan_peak_heights = chan.flat_counts[other_chan_peaks]
             chan_tallest_peak = np.argmax(chan_peak_heights)
             chan_alignment_peaks = chan_peaks[[0, 1, chan_tallest_peak, -1]]
             chan_alignment_midpoints = chan.midpoints[chan_alignment_peaks]
 
-
             #spline chan to channel1
-            print(f'{channel_name}', chan_alignment_midpoints, '\n chan1:', master_alignment_midpoints)
             spl = make_interp_spline(chan_alignment_midpoints, master_alignment_midpoints, k = 3)
             chan_midpoints_t = spl(chan.midpoints)
 
-            chan.spline_midpoints = chan_midpoints_t
+            chan.splined_midpoints = chan_midpoints_t
 
 
 
-    def old_algorithmic_aligning(self):
-        #normalize all midpoints
-        for channel in self.channels.values():
-            channel.normalize_midpoints()
-
-        #Get chan1 peak heights, energy
-        aligning_channel = self.channels['chan1']
-        chan1_peak_inds = aligning_channel.prominent_peak_indices
-        chan1_peak_heights = aligning_channel.counts[chan1_peak_inds]
-        chan1_peak_energies = aligning_channel.norm_midpoints[chan1_peak_inds]
-        chan1_peaks = zip(chan1_peak_heights, chan1_peak_energies)
-
-        #find std of height and energy
-        std_chan1_energies = np.std(chan1_peak_energies)
-        std_chan1_heights = np.std(chan1_peak_heights)
-
-
-        all_aligning_peaks = {}
-        for channel_name, channel in self.channels.items():
-            chan_min_scores = []
-            for peak_ind in channel.prominent_peak_indices:
-                peak_height = channel.counts[peak_ind]
-                peak_energy = channel.norm_midpoints[peak_ind]
-                min_chan1_i, min_score = min([(i, (chan1_peak_heights[i] - peak_height)**2 + (chan1_peak_energies[i] - peak_energy)**2) for i in range(len(chan1_peak_inds))])
-                chan1_energy = chan1_peak_energies[min_chan1_i]
-                #TODO figure out math so can do 1 - h/h, difference should be normalized ont sheer number.
-                chan_min_scores.append((peak_energy, chan1_energy, min_score))
-
-            
-            chan_aligning_peaks = [(peak_energy, chan1_energy) for peak_energy, chan1_energy, min_score in sorted(chan_min_scores, key=lambda x: x[2])[:5]]
-            all_aligning_peaks[channel_name] = chan_aligning_peaks
-
-        for channel in self.channels.keys():
-            aligment_peaks = all_aligning_peaks[channel]
-
-            
-            current_channel_midpoints = [t[0] for t in aligment_peaks]
-            chan1_midpoints = [t[1] for t in aligment_peaks]
-            print(type(current_channel_midpoints), current_channel_midpoints)
-            print(type(chan1_midpoints), chan1_midpoints)
-            chan1_midpoints = sorted(chan1_midpoints)
-            current_channel_midpoints = sorted(current_channel_midpoints)
-
-            try:
-                spl = make_interp_spline(current_channel_midpoints, chan1_midpoints, k = 3)
-            except IndexError:
-                print(channel)
-            channel_x = self.channels[channel]
-            channel_x_midpoints = channel_x.midpoints
-            channel_x_t = spl(chan1_midpoints)
-
-            channel_x.splined_midpoints = channel_x_t
-
-
-
-
+    
     def clean_channels(self):
         '''
         Docstring for clean_channels

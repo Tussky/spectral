@@ -56,7 +56,7 @@ class Channel:
         prominent_peak_right = peak_data['right_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
 
         # Need to find an early peak
-        early_bins = int(len(self.counts) / 4)
+        early_bins = (len(self.counts) // 4)
         early_counts = self.counts[:early_bins]
 
         early_peaks, early_peak_data = find_peaks(early_counts, prominence= scipy_prominence)
@@ -64,7 +64,20 @@ class Channel:
 
         best_early_peak = early_peaks[early_prominences.argmax()]
         prominent_peak_indices = np.append(prominent_peak_indices, best_early_peak)
-        prominent_peak_indices = np.array(sorted(list(set(prominent_peak_indices))))
+
+
+        #Need to insure last peak is found
+        last_bins = (len(self.counts) // 4)
+        last_counts = self.counts[-last_bins:]
+
+        last_peaks, last_peak_data = find_peaks(last_counts, prominence=scipy_prominence)
+
+        last_prominences = last_peak_data['prominences']
+        best_last_peak = last_peaks[last_prominences.argmax()] + (len(self.counts) - last_bins)
+        prominent_peak_indices = np.append(prominent_peak_indices, best_last_peak)
+
+        prominent_peak_indices = np.unique(prominent_peak_indices)
+
 
         if inplace:
             self.prominent_peak_indices = prominent_peak_indices
