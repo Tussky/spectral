@@ -52,8 +52,6 @@ class Channel:
         prominences = peak_data['prominences']
 
         prominent_peak_indices = peak_indices[prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
-<<<<<<< HEAD
-=======
         prominent_peak_left = peak_data['left_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
         prominent_peak_right = peak_data['right_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
 
@@ -80,7 +78,6 @@ class Channel:
 
         prominent_peak_indices = np.unique(prominent_peak_indices)
 
->>>>>>> 979c9220297793e9f6d1d8524f9a8da84373ef4d
 
         if inplace:
             self.prominent_peak_indices = prominent_peak_indices
