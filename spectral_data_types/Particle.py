@@ -83,16 +83,21 @@ class Particle:
         ---Output: np.array summed spectral values'''
         
         summed_counts = []
-        nbins = len(self.channels[0].midpoints)
-        for i in range(nbins):
-            bin_total = sum(ch.counts[i] for ch in self.channels)
-            summed.append(bin_total)
+        bins = list(range(0, 18001, 2))
+        for i in range(len(bins) - 2):
+            left_edge = bins[i]
+            right_edge = bins[i+1]
+
+            for chan in self.channels.values():
+                for i, point in enumerate(chan.midpoints):
+                    if point > left_edge and point <= right_edge:
+                        summed_counts.append(chan.counts[i])
+
+
+
+
         self.summed_heights = pd.Series(summed_counts)
         
-
-    def allign_peaks(self):
-        
-        return
     
     def dtw_allignment(self):
         """
@@ -292,33 +297,3 @@ class Particle:
         for channel_name in to_remove:
             self.channels.pop(channel_name)
         
-
-
-
-
-
-        
-
-
-            
-
-
-            
-                
-
-
-
-
-
-
-                    
-
-
-
-
-                
-
-
-
-    
-                
