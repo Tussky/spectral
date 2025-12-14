@@ -83,7 +83,10 @@ class Particle:
         ---Output: np.array summed spectral values'''
         
         summed_counts = []
-        
+        nbins = len(self.channels[0].midpoints)
+        for i in range(nbins):
+            bin_total = sum(ch.counts[i] for ch in self.channels)
+            summed.append(bin_total)
         self.summed_heights = pd.Series(summed_counts)
         
 
