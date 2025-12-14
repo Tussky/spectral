@@ -5,24 +5,18 @@ import warnings
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.interpolate import  make_interp_spline
-from dtw import dtw 
+import dtw
 
 
 class Particle: 
     channels: dict
+    dtw_warped_counts: pd.Series
     peak_indices: list[pd.Series] # Will be calculated using channel allignment
     summed_heights: pd.Series # Will be calculated with sum channels
     summed_channel: Channel
     channel_h2w: list
     h2w : float
     
-    # intialising by adding channels
-    def __init__(self, channels_to_add: Channel):
-        assert type(channels_to_add)==list and type(channels_to_add[0]) == Channel, "channels_to_add must be a list of channels"
-        self.channels = channels_to_add
-        self.clean_channels()
-
-
     # initalising by directly adding a dataframe with energies
     def __init__(self, spectral_dataframe: pd.DataFrame):
         """Initialise a particle object with a pd.DataFrame.
@@ -32,6 +26,7 @@ class Particle:
         self.channels = {}
         self.peak_indices = []
         self.summed_heights = pd.Series()
+        self.dtw_warped_counts = pd.Series()
 
         for name, energies in spectral_dataframe.iterrows():
             self.channels[name] = Channel(energies)
@@ -89,26 +84,37 @@ class Particle:
             summed.append(bin_total)
         self.summed_heights = pd.Series(summed)
         
+        
+    def dtw_warp(self, warp_on: pd.Series or str or None):
+        """
+        Use dynamic time warping to max channels based upon the master channel
 
-    def allign_peaks(self):
+        :param self:
+        :param warp_on: pd.Series or str: Warp everything according to this channel
+
+        :return: None
+        """
+        # Determining what to base the warp on.
+        if type(warp_on) == str:
+            master_channel = self.channels[warp_on]
+        elif type(warp_on) == pd.Series:
+            master_channel = warp_on
+        else:
+            master_channel = list(self.channels.values())[0] # NOTE: A big assumption is made here: That the first channel passed in here is the "best"
         
+
+        warped_channel_counts = {}
+        for name, chan in self.channels.items():
+            allign = dtw.dtw(x=master_channel.counts, y=chan.counts)
+            print(f"Done alligning chan: {name}.")
+
+            warped = chan.counts[allign.index2]
+            warped_channel_counts[name] = warped
+            print(f"Saved chan: {name} to new")
+
+
+        self.dtw_warped_counts = warped_channel_counts
         return
-    
-    def dtw_allignment(self):
-        """
-        Docstring for dtw_allignment
-        
-        :param self: Alligns all the channels from the particle class to channel1 - does so in place.
-        """
-        the_master_channel = self.channels['chan1']
-        print(self.channels)
-        for name, iter_channel in self.channels.items():
-            if name == 'chan1':
-                continue
-            else:    
-                allignment = dtw(the_master_channel.counts, iter_channel.counts)
-                iter_channel.alligned_counts = iter_channel.counts[allignment.index2] 
-        print("Done with: ", name)
                 
         
     def waterfall_plot_particle(self):
@@ -294,11 +300,8 @@ class Particle:
 
         for channel in self.channels.keys():
             aligment_peaks = all_aligning_peaks[channel]
-<<<<<<< HEAD
-=======
             current_channel_midpoints, chan1_midpoins =  [(tuple[0], tuple[1]) for tuple in aligment_peaks]
             spl = make_interp_spline(current_channel_midpoints, chan1_midpoins, k = 3)
->>>>>>> 3215c77 (Fixed tuple error - added plotting notebook)
 
             
             current_channel_midpoints = [t[0] for t in aligment_peaks]
@@ -352,35 +355,4 @@ class Particle:
                 to_remove.append(channel_name)
 
         for channel_name in to_remove:
-            self.channels.pop(channel_name)
-        
-
-
-
-
-
-        
-
-
-            
-
-
-            
-                
-
-
-
-
-
-
-                    
-
-
-
-
-                
-
-
-
-    
-                
+            self.channels.pop(channel_name)           
