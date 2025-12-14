@@ -111,10 +111,18 @@ class Particle:
         print("Done with: ", name)
                 
         
-    def plot_particle(self):
-        chan = self.channels[0]
-        bins = chan.midpoints
-        plt.plot(bins, self.summed_heights, drawstyle='steps-mid')
+    def waterfall_plot_particle(self):
+        # scaled_channels
+        plt.figure(figsize=(10, 100))
+        offset = 0
+
+        for midpoints, counts, channel_name in zip(scaled_channels['bin_left_edge'],scaled_channels['counts'], scaled_channels['channel']):
+            counts = np.array(counts)
+            plt.plot(bins, counts + offset, label = channel_name)
+            offset -= 2000
+        plt.legend()
+        plt.show()
+
 
     def gaussian(x, amplitude, mean, stdev):
         return amplitude * np.exp(-((x- mean) / (2* stdev)) **2)
@@ -153,6 +161,7 @@ class Particle:
 
 
 
+
     def find_particle_h2w(self):
         '''
         Docstring for find_particle_h2w
@@ -163,7 +172,7 @@ class Particle:
         particle_peaks = self.summed_channel.scipy_peaks
         particle_peak_indices = particle_peaks[0]
         signal = self.summed_heights
-        samp_chan = self.channels['chan01']
+        samp_chan = self.channels['chan1']
         x = samp_chan.midpoints
         peak_h2w_list = []
         for peak_index in particle_peak_indices:
@@ -207,8 +216,51 @@ class Particle:
             return particle_z
         
 
-
     def algorithmic_aligning(self):
+        '''
+        Docstring for algorithmic_aligning
+        
+        :param self: Spline all peaks to channel1
+        '''
+
+        #find the spline points for chan1.
+        master_channel = self.channels['chan1']
+        master_peaks = master_channel.prominent_peak_indices
+        master_peak_heights = master_channel.flat_counts[master_peaks]
+        master_tallest_peak = np.argmax(master_peak_heights)
+        master_alignment_peaks = master_peaks[[0, 1, master_tallest_peak, -1]] #First, second, tallest, and last peak
+        master_alignment_midpoints = master_channel.midpoints[master_alignment_peaks]
+
+
+        #loop through all channels
+        for channel_name, chan in self.channels.items():
+            if channel_name == 'chan1':
+                continue
+
+            #find the spline points for chan
+            chan.scipy_peaks()
+            chan_peaks = chan.prominent_peak_indices
+            # print(chan_peaks)
+            other_chan_peaks = np.delete(chan_peaks, [0, 1, -1])
+            # print(chan_peaks)
+            
+            chan.savgol_baseline_subtract()
+            chan_peak_heights = chan.flat_counts[other_chan_peaks]
+            chan_tallest_peak = np.argmax(chan_peak_heights)
+            chan_alignment_peaks = chan_peaks[[0, 1, chan_tallest_peak, -1]]
+            chan_alignment_midpoints = chan.midpoints[chan_alignment_peaks]
+
+
+            #spline chan to channel1
+            print(f'{channel_name}', chan_alignment_midpoints, '\n chan1:', master_alignment_midpoints)
+            spl = make_interp_spline(chan_alignment_midpoints, master_alignment_midpoints, k = 3)
+            chan_midpoints_t = spl(chan.midpoints)
+
+            chan.spline_midpoints = chan_midpoints_t
+
+
+
+    def old_algorithmic_aligning(self):
         #normalize all midpoints
         for channel in self.channels.values():
             channel.normalize_midpoints()
@@ -240,7 +292,6 @@ class Particle:
             chan_aligning_peaks = [(peak_energy, chan1_energy) for peak_energy, chan1_energy, min_score in sorted(chan_min_scores, key=lambda x: x[2])[:5]]
             all_aligning_peaks[channel_name] = chan_aligning_peaks
 
-        # print(self.channels.keys())
         for channel in self.channels.keys():
             aligment_peaks = all_aligning_peaks[channel]
 
@@ -262,7 +313,15 @@ class Particle:
 
             channel_x.splined_midpoints = channel_x_t
 
+
+
+
     def clean_channels(self):
+        '''
+        Docstring for clean_channels
+        
+        :param self: Get rid of all bad channels
+        '''
         print('called clean channels')
         channel_lengths = []
         channel_max_bin = []

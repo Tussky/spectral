@@ -54,10 +54,17 @@ class Channel:
         prominent_peak_indices = peak_indices[prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
         prominent_peak_left = peak_data['left_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
         prominent_peak_right = peak_data['right_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
-        # print("LEFTIES")
-        # print(prominent_peak_left)
-        # print("RIGHTIES")
-        # print(prominent_peak_right)
+
+        # Need to find an early peak
+        early_bins = int(len(self.counts) / 4)
+        early_counts = self.counts[:early_bins]
+
+        early_peaks, early_peak_data = find_peaks(early_counts, prominence= scipy_prominence)
+        early_prominences = early_peak_data['prominences']
+
+        best_early_peak = early_peaks[early_prominences.argmax()]
+        prominent_peak_indices = np.append(prominent_peak_indices, best_early_peak)
+        prominent_peak_indices = np.array(sorted(list(set(prominent_peak_indices))))
 
         if inplace:
             self.prominent_peak_indices = prominent_peak_indices
@@ -110,7 +117,7 @@ class Channel:
         return flat_counts
 
     
-    def plot_channel(self, flat: bool = False, with_peaks: bool = False, name: str = None):
+    def plot_channel(self, flat: bool = False, with_peaks: bool = False,  name: str = None):
         '''Purpose: Plot raw channel
         ---Input: Self
         ---Output: None'''
