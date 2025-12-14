@@ -294,6 +294,11 @@ class Particle:
 
         for channel in self.channels.keys():
             aligment_peaks = all_aligning_peaks[channel]
+<<<<<<< HEAD
+=======
+            current_channel_midpoints, chan1_midpoins =  [(tuple[0], tuple[1]) for tuple in aligment_peaks]
+            spl = make_interp_spline(current_channel_midpoints, chan1_midpoins, k = 3)
+>>>>>>> 3215c77 (Fixed tuple error - added plotting notebook)
 
             
             current_channel_midpoints = [t[0] for t in aligment_peaks]

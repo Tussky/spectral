@@ -52,6 +52,7 @@ class Channel:
         prominences = peak_data['prominences']
 
         prominent_peak_indices = peak_indices[prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
+<<<<<<< HEAD
         prominent_peak_left = peak_data['left_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
         prominent_peak_right = peak_data['right_bases'][prominences.argsort()[-self.WANTED_PROM_PEAKS:]]
 
@@ -65,6 +66,8 @@ class Channel:
         best_early_peak = early_peaks[early_prominences.argmax()]
         prominent_peak_indices = np.append(prominent_peak_indices, best_early_peak)
         prominent_peak_indices = np.array(sorted(list(set(prominent_peak_indices))))
+=======
+>>>>>>> 3215c77 (Fixed tuple error - added plotting notebook)
 
         if inplace:
             self.prominent_peak_indices = prominent_peak_indices
