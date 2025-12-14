@@ -13,7 +13,7 @@ class Particle:
     dtw_warped_counts: pd.Series
     peak_indices: list[pd.Series] # Will be calculated using channel allignment
     summed_heights: pd.Series # Will be calculated with sum channels
-    summed_channel: Channel
+    midpoints: pd.Series
     channel_h2w: list
     h2w : float
     
@@ -77,13 +77,31 @@ class Particle:
         ---Input: Self
         ---Output: np.array summed spectral values'''
         
-        bins = np.arange(0, 18001, 2)
-        summed_counts = np.zeros(len(bins)-1)
-    
+        bins = np.arange(0, 18000, 2)
+        summed_counts = np.zeros(len(bins) - 1)
+        
         for chan in self.channels.values():
-            hist, _ = np.histogram(chan.midpoints, bins=bins, weights=chan.counts)
+            hist, edges = np.histogram(chan.splined_midpoints, bins=bins, weights=chan.counts)
+            
             summed_counts += hist
-        self.summed_heights = pd.Series(summed_counts)
+            
+        self.summed_heights = summed_counts
+        self.midpoints = bins[:-1] + 1  # midpoints of bins
+
+
+    def plot_summed_channels(self):
+        '''
+        Docstring for plot_summed_channels
+        
+        :param self: plot the summed spectral channels
+        '''
+        plt.plot(self.midpoints, self.summed_heights, label='Summed Channels')
+        plt.xlabel('Energy')
+        plt.ylabel('Counts')
+        plt.title('Summed Spectral Channels')
+        plt.yscale('log')
+        plt.legend()
+        plt.show()
         
         
     def dtw_warp(self, warp_on: pd.Series or str or None):
