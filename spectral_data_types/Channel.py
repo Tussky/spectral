@@ -5,7 +5,6 @@ from scipy.interpolate import  make_interp_spline
 from scipy.signal import savgol_filter
 
 class Channel:
-    name: str
     energy: pd.Series
     edges: pd.Series
     midpoints: pd.Series
@@ -22,12 +21,18 @@ class Channel:
 
     def __init__(self, energies: pd.Series, wanted_prom_peaks: int = 8):
        assert len(energies.shape) == 1, "energy needs to be a one dimensional pd.Series"
-       energies = energies['energy'] # to stop the a.any() error appearing, despite this being a 1D Series.
+       try:
+           energies = energies['energy'] # to stop the a.any() error appearing, despite this being a 1D Series.
+       except KeyError:
+           pass
+       
        self.energy = energies[(0 < energies) & (energies < np.percentile(energies, 99.5))]
        self.counts, self.edges = np.histogram(self.energy, 10_000) 
        self.midpoints = 0.5 * (self.edges[1:] + self.edges[:-1])
        self.WANTED_PROM_PEAKS = wanted_prom_peaks
        self.prominent_peak_indices = pd.Series()
+
+
        
     def __str__(self):
         ret_str = "class: Channel"
@@ -80,8 +85,7 @@ class Channel:
 
 
         if inplace:
-            self.prominent_peak_indices = prominent_peak_indices
-            return None 
+            self.prominent_peak_indices = prominent_peak_indices 
         return (peak_indices, prominent_peak_indices, peak_data)
 
     def deriv_peaks(self):

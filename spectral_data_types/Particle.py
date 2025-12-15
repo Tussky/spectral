@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.interpolate import  make_interp_spline
 import dtw
+from lmfit.models import GaussianModel
 
 
 class Particle: 
@@ -13,9 +14,11 @@ class Particle:
     dtw_warped_counts: pd.Series
     peak_indices: list[pd.Series] # Will be calculated using channel allignment
     summed_heights: pd.Series # Will be calculated with sum channels
+    summed_channel: Channel
     midpoints: pd.Series
-    channel_h2w: list
-    h2w : float
+    channels_s2n: list
+    s2n : float
+    
     
     # initalising by directly adding a dataframe with energies
     def __init__(self, spectral_dataframe: pd.DataFrame):
@@ -85,8 +88,11 @@ class Particle:
             
             summed_counts += hist
             
-        self.summed_heights = summed_counts
+        self.summed_heights = summed_counts.astype(int)
+
         self.midpoints = bins[:-1] + 1  # midpoints of bins
+        print(np.repeat(self.midpoints, self.summed_heights))
+        self.summed_channel = Channel(pd.Series(np.repeat(self.midpoints, self.summed_heights)))
 
 
     def plot_summed_channels(self):
@@ -145,97 +151,99 @@ class Particle:
         plt.legend()
         plt.show()
         
+    def fit_peak_s2n(self, x_fit, y_fit):
+        model = GaussianModel(prefix='g_')
 
+        params = model.make_params(
+            g_amplitude=y_fit.max(),
+            g_center=x_fit[np.argmax(y_fit)],
+            g_sigma=(x_fit[1] - x_fit[0]) * 10
+        )
 
-    def gaussian(x, amplitude, mean, stdev):
-        return amplitude * np.exp(-((x- mean) / (2* stdev)) **2)
+        result = model.fit(y_fit, params, x=x_fit)
+        s2n = result.params['g_amplitude'].value / (2 * result.params['g_sigma'].value)
+        return s2n
 
-    def find_channels_h2w(self):
+    
+
+    def find_channels_s2n(self):
         '''
-        Docstring for find_channels_h2w
+        Docstring for find_channels_s2n
         
         :param self:Calculate the height to width ratio of the peaks witin the channels.
         '''
-        channel_h2w = []
-        for i, channel in enumerate(self.channels):
+        channel_s2n = []
+        for channel in self.channels.values():
             x = channel.midpoints
             signal = channel.counts
-            peak_h2w_list = []
-            for peak_index in self.peak_indices[i]:
+            peak_s2n_list = []
+            for peak_index in channel.prominent_peak_indices:
                 fit_region_start = peak_index - 50
                 fit_region_end = peak_index + 50
 
                 x_fit = x[fit_region_start:fit_region_end]
                 y_fit = signal[fit_region_start:fit_region_end]
 
-                init_guess = [signal[peak_index], x[peak_index], 5]
+                
+                peak_s2n_list.append(self.fit_peak_s2n(x_fit, y_fit))
+            avg_peak_s2n = np.mean(peak_s2n_list)
+            channel_s2n.append(avg_peak_s2n)
+        self.channel_s2n = channel_s2n
 
-                params, covariance = curve_fit(gaussian, x_fit, y_fit, p0 = init_guess)
-
-                amplitude_fit, mean_fit, stddev_fit = params
-
-                peak_h2w = amplitude_fit / (2 * stddev_fit)
-                peak_h2w_list.append(peak_h2w)
-            avg_peak_h2w = np.mean(peak_h2w_list)
-            channel_h2w.append(avg_peak_h2w)
-        self.channel_h2w = channel_h2w
-
-        return channel_h2w
+        return channel_s2n
 
 
 
 
-    def find_particle_h2w(self):
+    def find_particle_s2n(self):
         '''
-        Docstring for find_particle_h2w
+        Docstring for find_particle_s2n
         
         :param self: find the height 2 width ratio of the peaks in the particle.
         '''
 
-        particle_peaks = self.summed_channel.scipy_peaks
-        particle_peak_indices = particle_peaks[0]
+        self.summed_channel.scipy_peaks()
         signal = self.summed_heights
+        print('signal:', signal, '\n')
         samp_chan = self.channels['chan1']
-        x = samp_chan.midpoints
-        peak_h2w_list = []
-        for peak_index in particle_peak_indices:
-            fit_region_start = peak_index - 50
-            fit_region_end = peak_index + 50
-
-            x_fit = x[fit_region_start:fit_region_end]
-            y_fit = signal[fit_region_start:fit_region_end]
-
-            init_guess = [signal[peak_index], x[peak_index], 5]
-
-            params, covariance = curve_fit(gaussian, x_fit, y_fit, p0 = init_guess)
-
-            amplitude_fit, mean_fit, stddev_fit = params
-
-            peak_h2w = amplitude_fit / (2 * stddev_fit)
-            peak_h2w_list.append(peak_h2w)
-
-        particle_h2w = np.mean(peak_h2w_list)
-        self.h2w = particle_h2w
-        return particle_h2w
+        x = self.midpoints
+        peak_s2n_list = []
         
-    def find_h2w_zscore(self):
+        for peak_index in self.summed_channel.prominent_peak_indices:
+            try:
+                fit_region_start = peak_index - 50
+                fit_region_end = peak_index + 50
+
+                x_fit = x[fit_region_start:fit_region_end]
+                y_fit = signal[fit_region_start:fit_region_end]
+                print('y_fit', y_fit)
+                peak_s2n_list.append(self.fit_peak_s2n(x_fit, y_fit))
+            except ValueError:
+                continue
+
+        particle_s2n = np.mean(peak_s2n_list)
+        self.s2n = particle_s2n
+        return particle_s2n
+        
+
+    def find_s2n_zscore(self):
         '''
-        Docstring for find_h2w_zscore
+        Docstring for find_s2n_zscore
         
         :param self: calculate how close we are in aligning to any given channel
         '''
 
         try:
-            mean = np.mean(self.channel_h2w)
-            std = np.std(self.channel_h2w)
-            particle_z = np.abs(self.h2w - mean) / std
+            mean = np.mean(self.channel_s2n)
+            std = np.std(self.channel_s2n)
+            particle_z = np.abs(self.s2n - mean) / std
             return particle_z
         except AttributeError:
-            self.find_channels_h2w
-            self.find_particle_h2w
-            mean = np.mean(self.channel_h2w)
-            std = np.std(self.channel_h2w)
-            particle_z = np.abs(self.h2w - mean) / std
+            self.find_channels_s2n()
+            self.find_particle_s2n()
+            mean = np.mean(self.channel_s2n)
+            std = np.std(self.channel_s2n)
+            particle_z = np.abs(self.s2n - mean) / std
             return particle_z
         
 
