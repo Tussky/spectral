@@ -16,6 +16,7 @@ class Channel:
     prominent_peak_edges: pd.Series  
     flat_counts: pd.Series
     WANTED_PROM_PEAKS: int
+    flatend_metric: float
     
 
 
@@ -89,7 +90,7 @@ class Channel:
         return (peak_indices, prominent_peak_indices, peak_data)
 
     def deriv_peaks(self):
-        d2 = savgol_filter(self.counts, 10, 3)
+        d2 = savgol_filter(self.counts, 10, 3, deriv=2)
         
         prominent_peak_indices = d2.argsort()[:self.WANTED_PROM_PEAKS]
         self.prominent_peak_indices = prominent_peak_indices
@@ -116,6 +117,11 @@ class Channel:
         #---Remove the baseline of data using spline
         counts = self.counts.copy()
         flat_counts= counts - spline
+
+        std = np.std(flat_counts)
+        self.flatend_metric = np.sum((flat_counts < std) & (flat_counts > -std)) / len(flat_counts)
+        # print('Flatend metric:', self.flatend_metric)
+        # flat_counts = np.maximum(flat_counts, 0)
         flat_counts = pd.Series(flat_counts)
         self.flat_counts = flat_counts
         return flat_counts
@@ -128,7 +134,10 @@ class Channel:
         counts = self.counts.copy()
         baseline = savgol_filter(counts, 200, 3)
         flat_counts = counts - baseline
-        flat_counts = np.maximum(flat_counts, 0)
+        std = np.std(flat_counts)
+        self.flatend_metric = np.sum((flat_counts < std) & (flat_counts > -std)) / len(flat_counts)
+        # print('Flatend metric:', self.flatend_metric)
+        # flat_counts = np.maximum(flat_counts, 0)
         flat_counts = pd.Series(flat_counts)
         self.flat_counts = flat_counts
         return flat_counts
@@ -143,7 +152,7 @@ class Channel:
                 'Count': self.flat_counts,
                 'Energy' : self.midpoints
                 })
-            ax = df.plot(drawstyle = 'steps-pre', x = 'Energy', y =  'Count', logy = False, color = 'orange', label = name, legend= True)
+            ax = df.plot(drawstyle = 'steps-pre', x = 'Energy', y =  'Count', logy = False, color = "#07640C", title = name, legend = False, ylabel='Count')
             if(with_peaks):
                 peaks = self.prominent_peak_indices
                 ax.scatter(self.edges[peaks], self.flat_counts[peaks], color = 'r', marker = 'o')
@@ -152,7 +161,7 @@ class Channel:
                 'Count': self.counts,
                 'Energy' : self.midpoints
                 })
-            ax = df.plot(drawstyle = 'steps-pre', x = 'Energy', y =  'Count', logy = True, color = 'orange', label = name, legend= True)
+            ax = df.plot(drawstyle = 'steps-pre', x = 'Energy', y =  'Count', logy = True, color = "#07640C", title = name, legend = False, ylabel='Count')
             if(with_peaks):
                 peaks = self.prominent_peak_indices
                 ax.scatter(self.edges[peaks], self.counts[peaks], color = 'r', marker = 'o')

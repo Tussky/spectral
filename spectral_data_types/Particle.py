@@ -91,23 +91,8 @@ class Particle:
         self.summed_heights = summed_counts.astype(int)
 
         self.midpoints = bins[:-1] + 1  # midpoints of bins
-        print(np.repeat(self.midpoints, self.summed_heights))
         self.summed_channel = Channel(pd.Series(np.repeat(self.midpoints, self.summed_heights)))
 
-
-    def plot_summed_channels(self):
-        '''
-        Docstring for plot_summed_channels
-        
-        :param self: plot the summed spectral channels
-        '''
-        plt.plot(self.midpoints, self.summed_heights, label='Summed Channels')
-        plt.xlabel('Energy')
-        plt.ylabel('Counts')
-        plt.title('Summed Spectral Channels')
-        plt.yscale('log')
-        plt.legend()
-        plt.show()
         
         
     def dtw_warp(self, warp_on: pd.Series or str or None):
@@ -142,14 +127,6 @@ class Particle:
         return
                 
         
-    def waterfall_plot_particle(self):
-        plt.figure(figsize=(10, 100))
-        offset = 0
-        for channel_name, chan in self.channels.items():
-            plt.plot(chan.splined_midpoints, chan.counts + offset, label = channel_name)
-            offset -= 800
-        plt.legend()
-        plt.show()
         
     def fit_peak_s2n(self, x_fit, y_fit):
         model = GaussianModel(prefix='g_')
@@ -204,7 +181,7 @@ class Particle:
 
         self.summed_channel.scipy_peaks()
         signal = self.summed_heights
-        print('signal:', signal, '\n')
+        
         samp_chan = self.channels['chan1']
         x = self.midpoints
         peak_s2n_list = []
@@ -216,7 +193,7 @@ class Particle:
 
                 x_fit = x[fit_region_start:fit_region_end]
                 y_fit = signal[fit_region_start:fit_region_end]
-                print('y_fit', y_fit)
+                
                 peak_s2n_list.append(self.fit_peak_s2n(x_fit, y_fit))
             except ValueError:
                 continue
@@ -298,7 +275,7 @@ class Particle:
         
         :param self: Get rid of all bad channels
         '''
-        print('called clean channels')
+        
         channel_lengths = []
         channel_max_bin = []
         for channel_name in self.channels.keys():
@@ -324,3 +301,48 @@ class Particle:
 
         for channel_name in to_remove:
             self.channels.pop(channel_name)           
+    
+
+
+#-----------------Plotting Functions-----------------#
+
+    def plot_summed_channels(self):
+        '''
+        Docstring for plot_summed_channels
+        
+        :param self: plot the summed spectral channels
+        '''
+        plt.plot(self.midpoints, self.summed_heights, label='Summed Channels')
+        plt.xlabel('Energy')
+        plt.ylabel('Counts')
+        plt.title('Summed Spectral Channels')
+        plt.yscale('log')
+        plt.legend()
+        plt.show()
+
+
+    def waterfall_plot_particle(self):
+        plt.figure(figsize=(10, 8))
+        offset = 0
+        for channel_name, chan in self.channels.items():
+            plt.plot(chan.splined_midpoints, chan.counts + offset, label = False)
+            if channel_name == 'chan109':
+                break
+            offset -= 800
+        # plt.legend()
+        plt.title('Aligned Spectral Channels')
+        plt.xlabel('Energy')
+        plt.yticks([])
+        
+        plt.show()
+
+
+
+    def plot_channel(self, flat: bool = False, with_peaks: bool = False,  name: str = None):
+        '''
+        Docstring for plot_channel
+        
+        :param self: plot a specific channel by name
+        '''
+        chan = self.channels[name]
+        chan.plot_channel(flat=flat, with_peaks=with_peaks, name=name)
